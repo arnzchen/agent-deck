@@ -107,11 +107,7 @@ func handleEventsFollow(profile string, args []string) {
 	// A client that only follows the bus still gets queued sends that a
 	// reboot left unfinished delivered: their workers restart here.
 	// Read-only: the queue directory is only looked at, never created.
-	if p, err := session.ResolveProfileForStorage(profile); err == nil && !*readOnlyFlag {
-		if dir, err := session.GetProfileDir(p); err == nil {
-			kickPendingSendWorkers(profile, sendqueue.Dir(dir), "")
-		}
-	}
+	recoverFollowerWorkers(profile, *readOnlyFlag, kickPendingSendWorkers)
 
 	bus, err := openFollowerBus(*busFlag, *readOnlyFlag)
 	if err != nil {
@@ -144,6 +140,17 @@ func handleEventsFollow(profile string, args []string) {
 	if err := sub.Err(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: events follow: %v\n", err)
 		os.Exit(1)
+	}
+}
+
+func recoverFollowerWorkers(profile string, readOnly bool, kick func(string, string, string)) {
+	if readOnly {
+		return
+	}
+	if p, err := session.ResolveProfileForStorage(profile); err == nil {
+		if dir, err := session.GetProfileDir(p); err == nil {
+			kick(profile, sendqueue.Dir(dir), "")
+		}
 	}
 }
 

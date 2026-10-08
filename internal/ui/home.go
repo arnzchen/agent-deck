@@ -6207,10 +6207,19 @@ func (h *Home) statusWorker() {
 	// the Bubble Tea tick messages stop firing, but this goroutine keeps running.
 	// A timer (reset after each sweep) rather than a fixed ticker lets the cadence
 	// adapt when a sweep overruns the interval (#1366).
-	base := baseStatusInterval
-	if cfg, err := session.LoadUserConfig(); err == nil {
-		base = cfg.StatusInterval()
+	base := statusWorkerInterval(session.LoadUserConfig)
+	h.statusWorkerLoop(base, h.backgroundStatusUpdate, h.processStatusUpdate)
+}
+
+func statusWorkerInterval(load func() (*session.UserConfig, error)) time.Duration {
+	if cfg, err := load(); err == nil {
+		return cfg.StatusInterval()
 	}
+	return baseStatusInterval
+}
+
+// Separate callbacks let tests exercise the real worker cadence without touching tmux.
+func (h *Home) statusWorkerLoop(base time.Duration, sweep func(), process func(statusUpdateRequest)) {
 	timer := time.NewTimer(base)
 	defer timer.Stop()
 
@@ -6222,7 +6231,7 @@ func (h *Home) statusWorker() {
 		case <-timer.C:
 			// Self-triggered update - runs even when TUI is paused
 			sweepStart := time.Now()
-			h.backgroundStatusUpdate()
+			sweep()
 			timer.Reset(nextStatusInterval(time.Since(sweepStart), base, maxStatusInterval))
 			// Coalesce a queued immediate request after full sweep.
 			select {
@@ -6239,7 +6248,7 @@ func (h *Home) statusWorker() {
 						statusLog.Error("worker_panic", slog.Any("panic", r))
 					}
 				}()
-				h.processStatusUpdate(req)
+				process(req)
 			}()
 		}
 	}
