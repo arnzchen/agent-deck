@@ -62,6 +62,15 @@ func openBusForRead(name string) (*events.Bus, error) {
 	}
 }
 
+// Read-only followers use the already resolved profile and never take a writer handle.
+func openFollowerBus(name string, readOnly bool) (*events.Bus, error) {
+	name = strings.ToLower(strings.TrimSpace(name))
+	if readOnly && (name == "" || name == "events") {
+		return events.OpenReader(events.CurrentProfile())
+	}
+	return openBusForRead(name)
+}
+
 // handleEventsFollow implements `agent-deck events follow --json [--after <cursor>]
 // [--kind <prefix>[,<prefix>]] [--session <id>] [--bus events|comms]`. It streams one canonical-JSON
 // frame per line to stdout, oldest first, and keeps streaming newly published
@@ -104,13 +113,7 @@ func handleEventsFollow(profile string, args []string) {
 		}
 	}
 
-	var bus *events.Bus
-	var err error
-	if *readOnlyFlag && (*busFlag == "" || *busFlag == "events") {
-		bus, err = events.OpenReader(profile)
-	} else {
-		bus, err = openBusForRead(*busFlag)
-	}
+	bus, err := openFollowerBus(*busFlag, *readOnlyFlag)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: events follow: %v\n", err)
 		os.Exit(1)

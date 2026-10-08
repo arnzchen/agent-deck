@@ -27,4 +27,10 @@ func TestHandoffLauncherIdentityUsesVerifiedSend(t *testing.T) {
 	if strings.Contains(got, "agent-deck session send <id-or-title>") {
 		t.Fatal("must not advertise conflicting raw send default")
 	}
+	inst.Tool = "claude"
+	got = inst.BuildIdentityPrompt()
+	if strings.Contains(got, "agent-handoff send --key KEY") ||
+		!strings.Contains(got, "agent-deck session send <id-or-title>") {
+		t.Fatal("non-Codex sessions must retain their ordinary messaging instructions")
+	}
 }
