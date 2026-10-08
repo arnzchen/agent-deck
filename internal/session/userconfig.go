@@ -463,6 +463,7 @@ type PerformanceSettings struct {
 	StatusIntervalSeconds int   `toml:"status_interval_seconds,omitempty"`
 }
 
+// StatusInterval bounds local TUI sweep frequency while preserving the two-second default.
 func (c *UserConfig) StatusInterval() time.Duration {
 	if c == nil || c.Performance.StatusIntervalSeconds == 0 {
 		return 2 * time.Second

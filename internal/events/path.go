@@ -36,6 +36,7 @@ func busDir() (string, error) {
 	return busDirFor(CurrentProfile())
 }
 
+// OpenReader observes an existing profile log without creating storage or writer leases.
 func OpenReader(profile string) (*Bus, error) {
 	dir, err := busDirFor(profile)
 	if err != nil {
