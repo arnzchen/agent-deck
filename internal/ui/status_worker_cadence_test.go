@@ -38,7 +38,12 @@ func TestStatusWorkerCadenceAndImmediateTrigger(t *testing.T) {
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
-		home.statusWorkerLoop(100*time.Millisecond, func() { sweeps <- time.Now() },
+		home.statusWorkerLoop(100*time.Millisecond, func() {
+			select {
+			case sweeps <- time.Now():
+			default:
+			}
+		},
 			func(statusUpdateRequest) { requests <- struct{}{} })
 	}()
 	home.statusTrigger <- statusUpdateRequest{}

@@ -88,7 +88,7 @@ func handleEventsFollow(profile string, args []string) {
 	busFlag := fs.String("bus", "events", busFlagHelp)
 	readOnlyFlag := fs.Bool("read-only", false, "do not restart pending send workers while observing events")
 	fs.Usage = func() {
-		fmt.Fprintln(os.Stderr, "Usage: agent-deck events follow --json [--after <cursor>] [--kind <prefix,...>] [--session <id>] [--bus events|comms]")
+		fmt.Fprintln(os.Stderr, "Usage: agent-deck events follow --json [--after <cursor>] [--kind <prefix,...>] [--session <id>] [--bus events|comms] [--read-only]")
 		fs.PrintDefaults()
 	}
 	if err := fs.Parse(normalizeArgs(fs, args)); err != nil {
@@ -262,7 +262,7 @@ func handleEventsStats(args []string) {
 	busFlag := fs.String("bus", "events", busFlagHelp)
 	readOnlyFlag := fs.Bool("read-only", false, "read existing event log without opening a writer")
 	fs.Usage = func() {
-		fmt.Fprintln(os.Stderr, "Usage: agent-deck events stats [--json] [--bus events|comms]")
+		fmt.Fprintln(os.Stderr, "Usage: agent-deck events stats [--json] [--bus events|comms] [--read-only]")
 		fs.PrintDefaults()
 	}
 	if err := fs.Parse(args); err != nil {

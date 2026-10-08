@@ -21,6 +21,28 @@ func TestReadonlyFollowerDoesNotRecoverWorkers(t *testing.T) {
 	}
 }
 
+func TestReadonlyEventHelpSynopsis(t *testing.T) {
+	for _, action := range []string{"follow", "stats"} {
+		stdout, stderr, code := runAgentDeck(t, t.TempDir(), "events", action, "--help")
+		if code != 0 {
+			t.Fatalf("%s help exited %d", action, code)
+		}
+		found := false
+		for _, line := range strings.Split(stdout+stderr, "\n") {
+			if strings.HasPrefix(line, "Usage:") {
+				found = true
+				if !strings.Contains(line, "[--read-only]") {
+					t.Fatalf("%s synopsis omits read-only: %s", action, line)
+				}
+				break
+			}
+		}
+		if !found {
+			t.Fatalf("%s help omitted its synopsis", action)
+		}
+	}
+}
+
 func TestReadonlyEventCommandsObserveWithoutWriting(t *testing.T) {
 	home := t.TempDir()
 	writeMacappConfig(t, home, "[macapp]\nplugins=true\n")
