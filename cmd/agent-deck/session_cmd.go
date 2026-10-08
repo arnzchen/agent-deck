@@ -575,6 +575,8 @@ func handleSessionArchive(profile string, args []string) {
 	jsonOutput := fs.Bool("json", false, "Output as JSON")
 	quiet := fs.Bool("quiet", false, "Minimal output")
 	quietShort := fs.Bool("q", false, "Minimal output (short)")
+	expectedVersion := fs.String("expected-content-version", "", "Archive only a waiting child with this exact transcript version (requires --expected-parent)")
+	expectedParent := fs.String("expected-parent", "", "Require this parent for conditional archival")
 
 	fs.Usage = func() {
 		fmt.Println("Usage: agent-deck session archive <id|title> [options]")
@@ -624,6 +626,16 @@ func handleSessionArchive(profile string, args []string) {
 		out.Error(fmt.Sprintf("session '%s' is already archived", inst.Title), ErrCodeInvalidOperation)
 		os.Exit(1)
 	}
+	if *expectedVersion != "" || *expectedParent != "" {
+		if err := inst.UpdateStatus(); err != nil {
+			out.Error(fmt.Sprintf("cannot refresh archive guard: %v", err), ErrCodeInvalidOperation)
+			os.Exit(1)
+		}
+		if err := validateConditionalArchive(inst, instances, *expectedParent, *expectedVersion); err != nil {
+			out.Error(err.Error(), ErrCodeInvalidOperation)
+			os.Exit(1)
+		}
+	}
 
 	// Only kill a live tmux session. Killing an already-dead session returns a
 	// fatal error that would abort the archive (see idempotent-Kill history),
@@ -662,6 +674,37 @@ func handleSessionArchive(profile string, args []string) {
 		"title":    inst.Title,
 		"archived": true,
 	})
+}
+
+func validateConditionalArchive(inst *session.Instance, peers []*session.Instance, parent, version string) error {
+	if parent == "" || version == "" || inst.ParentSessionID != parent {
+		return fmt.Errorf("conditional archive requires matching parent and transcript version")
+	}
+	if !session.IsCodexCompatible(inst.Tool) && !session.IsClaudeCompatible(inst.Tool) {
+		return fmt.Errorf("conditional archive supports only Codex and Claude terminal-turn fences")
+	}
+	if inst.Status != session.StatusWaiting {
+		return fmt.Errorf("conditional archive requires a waiting terminal worker")
+	}
+	currentVersion := inst.ResponseContentVersion(peers)
+	if currentVersion == "" || currentVersion != version {
+		return fmt.Errorf("conditional archive refused: transcript changed or exact version unavailable")
+	}
+	if session.IsCodexCompatible(inst.Tool) {
+		response, versioned, err := inst.GetLastResponseAtVersion(peers, currentVersion)
+		latestTurn, turnErr := inst.LatestCodexTurnGeneration()
+		if err != nil || turnErr != nil || !versioned || latestTurn == "" ||
+			response.CodexTurnGeneration != latestTurn {
+			return fmt.Errorf("conditional archive refused: latest Codex turn is not the completed response")
+		}
+	} else if session.IsClaudeCompatible(inst.Tool) {
+		path, err := inst.GetJSONLPathChecked(peers)
+		_, found, pending := session.ScanTranscriptTailForDone(path)
+		if err != nil || !found || pending {
+			return fmt.Errorf("conditional archive refused: latest Claude turn has no flushed terminal report")
+		}
+	}
+	return nil
 }
 
 // handleSessionUnarchive clears the archive flag without restarting tmux.
