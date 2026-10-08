@@ -253,6 +253,7 @@ func handleEventsStats(args []string) {
 	fs := flag.NewFlagSet("agent-deck events stats", flag.ExitOnError)
 	jsonOut := fs.Bool("json", false, "print stats as JSON")
 	busFlag := fs.String("bus", "events", busFlagHelp)
+	readOnlyFlag := fs.Bool("read-only", false, "read existing event log without opening a writer")
 	fs.Usage = func() {
 		fmt.Fprintln(os.Stderr, "Usage: agent-deck events stats [--json] [--bus events|comms]")
 		fs.PrintDefaults()
@@ -261,7 +262,7 @@ func handleEventsStats(args []string) {
 		os.Exit(1)
 	}
 
-	bus, err := openBusForRead(*busFlag)
+	bus, err := openFollowerBus(*busFlag, *readOnlyFlag)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: events stats: %v\n", err)
 		os.Exit(1)
