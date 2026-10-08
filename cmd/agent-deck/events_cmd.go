@@ -77,6 +77,7 @@ func handleEventsFollow(profile string, args []string) {
 	kindFlag := fs.String("kind", "", "only frames whose kind equals or starts with one of these comma-separated prefixes (e.g. session.status,session.turn,macapp.)")
 	sessionFlag := fs.String("session", "", "only frames for this session id")
 	busFlag := fs.String("bus", "events", busFlagHelp)
+	readOnlyFlag := fs.Bool("read-only", false, "do not restart pending send workers while observing events")
 	fs.Usage = func() {
 		fmt.Fprintln(os.Stderr, "Usage: agent-deck events follow --json [--after <cursor>] [--kind <prefix,...>] [--session <id>] [--bus events|comms]")
 		fs.PrintDefaults()
@@ -97,13 +98,19 @@ func handleEventsFollow(profile string, args []string) {
 	// A client that only follows the bus still gets queued sends that a
 	// reboot left unfinished delivered: their workers restart here.
 	// Read-only: the queue directory is only looked at, never created.
-	if p, err := session.ResolveProfileForStorage(profile); err == nil {
+	if p, err := session.ResolveProfileForStorage(profile); err == nil && !*readOnlyFlag {
 		if dir, err := session.GetProfileDir(p); err == nil {
 			kickPendingSendWorkers(profile, sendqueue.Dir(dir), "")
 		}
 	}
 
-	bus, err := openBusForRead(*busFlag)
+	var bus *events.Bus
+	var err error
+	if *readOnlyFlag && (*busFlag == "" || *busFlag == "events") {
+		bus, err = events.OpenReader(profile)
+	} else {
+		bus, err = openBusForRead(*busFlag)
+	}
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: events follow: %v\n", err)
 		os.Exit(1)

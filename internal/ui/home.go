@@ -6207,7 +6207,11 @@ func (h *Home) statusWorker() {
 	// the Bubble Tea tick messages stop firing, but this goroutine keeps running.
 	// A timer (reset after each sweep) rather than a fixed ticker lets the cadence
 	// adapt when a sweep overruns the interval (#1366).
-	timer := time.NewTimer(baseStatusInterval)
+	base := baseStatusInterval
+	if cfg, err := session.LoadUserConfig(); err == nil {
+		base = cfg.StatusInterval()
+	}
+	timer := time.NewTimer(base)
 	defer timer.Stop()
 
 	for {
@@ -6219,7 +6223,7 @@ func (h *Home) statusWorker() {
 			// Self-triggered update - runs even when TUI is paused
 			sweepStart := time.Now()
 			h.backgroundStatusUpdate()
-			timer.Reset(nextStatusInterval(time.Since(sweepStart), baseStatusInterval, maxStatusInterval))
+			timer.Reset(nextStatusInterval(time.Since(sweepStart), base, maxStatusInterval))
 			// Coalesce a queued immediate request after full sweep.
 			select {
 			case <-h.statusTrigger:
