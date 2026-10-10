@@ -168,6 +168,8 @@ func liveSessionRows(ctx context.Context, profile string, instances []*session.I
 		substate := ""
 		if !cached[inst] {
 			substate = string(inst.Substate())
+		} else if held, _ := inst.IsAuthHeld(); held {
+			substate = string(session.SubstateAuth401)
 		}
 		row := staticSessionRow(inst, instances, profile, transcripts)
 		row.StatusSource = "live"
