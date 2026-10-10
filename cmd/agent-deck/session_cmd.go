@@ -634,8 +634,9 @@ func handleSessionArchive(profile string, args []string) {
 		exitCLI(1)
 	}
 	if *expectedVersion != "" || *expectedParent != "" {
+		lockedCodexID := inst.CodexSessionID
 		if session.IsCodexCompatible(inst.Tool) {
-			lock, err := session.AcquireCodexAcceptanceLock(inst.CodexSessionID, 5*time.Second)
+			lock, err := session.AcquireCodexAcceptanceLock(lockedCodexID, codexAcceptanceLockTimeout)
 			if err != nil {
 				out.Error(fmt.Sprintf("cannot lock archive guard: %v", err), ErrCodeInvalidOperation)
 				exitCLI(1)
@@ -651,6 +652,10 @@ func handleSessionArchive(profile string, args []string) {
 		}
 		if err := inst.UpdateStatus(); err != nil {
 			out.Error(fmt.Sprintf("cannot refresh archive guard: %v", err), ErrCodeInvalidOperation)
+			exitCLI(1)
+		}
+		if session.IsCodexCompatible(inst.Tool) && inst.CodexSessionID != lockedCodexID {
+			out.Error("conditional archive refused: Codex identity changed while locked", ErrCodeInvalidOperation)
 			exitCLI(1)
 		}
 		if err := validateConditionalArchive(inst, instances, *expectedParent, *expectedVersion); err != nil {
@@ -718,6 +723,9 @@ func validateConditionalArchive(inst *session.Instance, peers []*session.Instanc
 		if err != nil || turnErr != nil || !versioned || latestTurn == "" ||
 			response.CodexTurnGeneration != latestTurn {
 			return fmt.Errorf("conditional archive refused: latest Codex turn is not the completed response")
+		}
+		if _, err := session.ReconcileCodexSubmissionMarker(inst.ID, inst.CodexSessionID, latestTurn); err != nil {
+			return fmt.Errorf("conditional archive refused: %w", err)
 		}
 	} else if session.IsClaudeCompatible(inst.Tool) {
 		path, err := inst.GetJSONLPathChecked(peers)

@@ -85,6 +85,20 @@ func TestConditionalArchiveFencesLatestCodexTurn(t *testing.T) {
 	if err := validateConditionalArchive(inst, nil, "p", version); err != nil {
 		t.Fatalf("completed exact turn refused: %v", err)
 	}
+	generation, err := inst.LatestCodexTurnGeneration()
+	if err != nil {
+		t.Fatal(err)
+	}
+	marker, err := session.PrepareCodexSubmissionMarker(inst.ID, inst.CodexSessionID, generation, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := validateConditionalArchive(inst, nil, "p", version); err == nil {
+		t.Fatal("unresolved no-wait send was accepted for archival")
+	}
+	if err := session.ClearCodexSubmissionMarker(marker); err != nil {
+		t.Fatal(err)
+	}
 	if err := os.WriteFile(path, []byte(completed+
 		"{\"type\":\"event_msg\",\"payload\":{\"type\":\"task_started\",\"turn_id\":\"t2\"}}\n"), 0o600); err != nil {
 		t.Fatal(err)
