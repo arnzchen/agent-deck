@@ -29,12 +29,22 @@ func TestCLIStatusCandidatesRefreshesLiveHistoryAndSharesSocketRead(t *testing.T
 	if calls != 1 || len(refresh) != 2 || len(cached) != 2 {
 		t.Fatalf("socket reads=%d refresh=%d cached=%d", calls, len(refresh), len(cached))
 	}
+	for index, row := range rows {
+		if cached[row] != (index%2 == 1) {
+			t.Fatalf("row %d cached=%t, want only absent rows cached", index, cached[row])
+		}
+	}
 	listStatusSessionNames = func(string) (map[string]struct{}, error) {
 		return nil, errors.New("inventory unavailable")
 	}
 	refresh, cached = CLIStatusCandidates(rows)
 	if len(refresh) != 2 || len(cached) != 2 {
 		t.Fatal("indeterminate error rows must refresh; stopped history remains cached")
+	}
+	for _, row := range rows {
+		if cached[row] != (row.Status == StatusStopped) {
+			t.Fatalf("status=%s cached=%t after failed inventory", row.Status, cached[row])
+		}
 	}
 }
 
