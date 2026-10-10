@@ -65,6 +65,11 @@ func TestCLIStatusCandidatesStoppedBudget(t *testing.T) {
 }
 
 func TestCLIStatusCandidatesAbsentHistory(t *testing.T) {
+	old := listStatusSessionNames
+	t.Cleanup(func() { listStatusSessionNames = old })
+	listStatusSessionNames = func(string) (map[string]struct{}, error) {
+		return map[string]struct{}{}, nil
+	}
 	for _, status := range []Status{StatusStopped, StatusError} {
 		for _, archived := range []bool{false, true} {
 			t.Run(fmt.Sprintf("%s/archived=%t", status, archived), func(t *testing.T) {
