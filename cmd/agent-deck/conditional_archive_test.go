@@ -28,6 +28,25 @@ func TestConditionalArchiveAcceptanceLockExcludesSend(t *testing.T) {
 	other.Release()
 }
 
+func TestConditionalArchiveClaudeLockExcludesSend(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	lock, err := session.AcquireSendLock("archive-child", time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer lock.Release()
+	if other, err := session.AcquireSendLock("archive-child", 10*time.Millisecond); err == nil {
+		other.Release()
+		t.Fatal("concurrent Claude send passed the conditional archive window")
+	}
+	lock.Release()
+	other, err := session.AcquireSendLock("archive-child", time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	other.Release()
+}
+
 func TestConditionalArchiveRefusesUnsafeTargets(t *testing.T) {
 	for _, tc := range []struct {
 		name, parent, version string

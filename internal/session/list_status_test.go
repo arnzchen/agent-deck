@@ -33,8 +33,8 @@ func TestCLIStatusCandidatesRefreshesLiveHistoryAndSharesSocketRead(t *testing.T
 		return nil, errors.New("inventory unavailable")
 	}
 	refresh, cached = CLIStatusCandidates(rows)
-	if len(refresh) != 0 || len(cached) != 4 {
-		t.Fatal("indeterminate history must remain cached, not claim live status")
+	if len(refresh) != 2 || len(cached) != 2 {
+		t.Fatal("indeterminate error rows must refresh; stopped history remains cached")
 	}
 }
 
