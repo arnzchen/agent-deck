@@ -634,6 +634,7 @@ func handleSessionArchive(profile string, args []string) {
 		exitCLI(1)
 	}
 	if *expectedVersion != "" || *expectedParent != "" {
+		adoptLiveCodexIdentity(storage, inst)
 		lockedCodexID := inst.CodexSessionID
 		if session.IsCodexCompatible(inst.Tool) {
 			lock, err := session.AcquireCodexAcceptanceLock(lockedCodexID, codexAcceptanceLockTimeout)

@@ -69,6 +69,7 @@ func TestConditionalArchiveRefusesUnsafeTargets(t *testing.T) {
 
 func TestConditionalArchiveFencesLatestCodexTurn(t *testing.T) {
 	home := t.TempDir()
+	t.Setenv("HOME", home)
 	t.Setenv("CODEX_HOME", home)
 	path := filepath.Join(home, "sessions", "2026", "10", "08", "rollout-test-thread-test.jsonl")
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
