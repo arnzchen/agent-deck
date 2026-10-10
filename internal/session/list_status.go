@@ -2,8 +2,10 @@ package session
 
 import "github.com/asheshgoplani/agent-deck/internal/tmux"
 
-// CLIStatusCandidates avoids probing each stopped session separately. A stopped
-// row with no tmux session in a complete socket listing retains its stored
+var listStatusSessionNames = tmux.ListSessionNamesOnSocket
+
+// CLIStatusCandidates avoids probing each historical session separately. A
+// stopped, error or archived row absent from a complete socket listing retains its stored
 // status; an indeterminate listing also retains it, marked as cached.
 func CLIStatusCandidates(instances []*Instance) ([]*Instance, map[*Instance]bool) {
 	refresh := make([]*Instance, 0, len(instances))
@@ -13,7 +15,7 @@ func CLIStatusCandidates(instances []*Instance) ([]*Instance, map[*Instance]bool
 		if inst == nil {
 			continue
 		}
-		if inst.Status != StatusStopped {
+		if inst.Status != StatusStopped && inst.Status != StatusError && !inst.IsArchived() {
 			refresh = append(refresh, inst)
 			continue
 		}
@@ -25,7 +27,7 @@ func CLIStatusCandidates(instances []*Instance) ([]*Instance, map[*Instance]bool
 		names, ok := bySocket[sess.SocketName]
 		if !ok {
 			var err error
-			names, err = tmux.ListSessionNamesOnSocket(sess.SocketName)
+			names, err = listStatusSessionNames(sess.SocketName)
 			if err != nil {
 				names = nil
 			}
