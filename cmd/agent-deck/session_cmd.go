@@ -591,12 +591,13 @@ func handleSessionArchive(profile string, args []string) {
 	quiet := fs.Bool("quiet", false, "Minimal output")
 	quietShort := fs.Bool("q", false, "Minimal output (short)")
 	expectedVersion := fs.String("expected-content-version", "", "Archive only a waiting child with this exact transcript version (requires --expected-parent)")
-	expectedParent := fs.String("expected-parent", "", "Require this parent for conditional archival")
+	expectedParent := fs.String("expected-parent", "", "Archive only if the session has this parent (requires --expected-content-version)")
 
 	fs.Usage = func() {
 		fmt.Println("Usage: agent-deck session archive <id|title> [options]")
 		fmt.Println()
 		fmt.Println("Stop a session and hide it from active lists (retained in storage).")
+		fmt.Println("For conditional archival, provide both --expected-parent and --expected-content-version.")
 		fmt.Println()
 		fmt.Println("Options:")
 		fs.PrintDefaults()
