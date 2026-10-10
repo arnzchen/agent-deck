@@ -634,6 +634,14 @@ func handleSessionArchive(profile string, args []string) {
 		exitCLI(1)
 	}
 	if *expectedVersion != "" || *expectedParent != "" {
+		if session.IsCodexCompatible(inst.Tool) {
+			lock, err := session.AcquireCodexAcceptanceLock(inst.CodexSessionID, 5*time.Second)
+			if err != nil {
+				out.Error(fmt.Sprintf("cannot lock archive guard: %v", err), ErrCodeInvalidOperation)
+				exitCLI(1)
+			}
+			defer lock.Release()
+		}
 		if err := inst.UpdateStatus(); err != nil {
 			out.Error(fmt.Sprintf("cannot refresh archive guard: %v", err), ErrCodeInvalidOperation)
 			exitCLI(1)

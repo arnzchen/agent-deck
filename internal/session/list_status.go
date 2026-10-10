@@ -5,7 +5,7 @@ import "github.com/asheshgoplani/agent-deck/internal/tmux"
 var listStatusSessionNames = tmux.ListSessionNamesOnSocket
 
 // CLIStatusCandidates avoids probing each historical session separately. A
-// stopped, error or archived row absent from a complete socket listing retains its stored
+// stopped or error row absent from a complete socket listing retains its stored
 // status; an indeterminate listing also retains it, marked as cached.
 func CLIStatusCandidates(instances []*Instance) ([]*Instance, map[*Instance]bool) {
 	refresh := make([]*Instance, 0, len(instances))
@@ -15,7 +15,7 @@ func CLIStatusCandidates(instances []*Instance) ([]*Instance, map[*Instance]bool
 		if inst == nil {
 			continue
 		}
-		if inst.Status != StatusStopped && inst.Status != StatusError && !inst.IsArchived() {
+		if inst.Status != StatusStopped && inst.Status != StatusError {
 			refresh = append(refresh, inst)
 			continue
 		}

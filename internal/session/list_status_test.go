@@ -65,11 +65,8 @@ func TestCLIStatusCandidatesStoppedBudget(t *testing.T) {
 }
 
 func TestCLIStatusCandidatesAbsentHistory(t *testing.T) {
-	for _, status := range []Status{StatusStopped, StatusError, StatusWaiting} {
+	for _, status := range []Status{StatusStopped, StatusError} {
 		for _, archived := range []bool{false, true} {
-			if status == StatusWaiting && !archived {
-				continue
-			}
 			t.Run(fmt.Sprintf("%s/archived=%t", status, archived), func(t *testing.T) {
 				inst := &Instance{Status: status}
 				if archived {
@@ -82,6 +79,17 @@ func TestCLIStatusCandidatesAbsentHistory(t *testing.T) {
 					t.Fatal("absent historical row must retain cached status")
 				}
 			})
+		}
+	}
+}
+
+func TestCLIStatusCandidatesRefreshesArchivedLiveStatus(t *testing.T) {
+	for _, status := range []Status{StatusWaiting, StatusRunning} {
+		inst := &Instance{Status: status, ArchivedAt: time.Now()}
+		inst.tmuxSession = tmux.ReconnectSessionLazy("absent", "history", "", "", "inactive")
+		refresh, cached := CLIStatusCandidates([]*Instance{inst})
+		if len(refresh) != 1 || cached[inst] {
+			t.Fatal("archived live status must be refreshed, not preserved as terminal history")
 		}
 	}
 }

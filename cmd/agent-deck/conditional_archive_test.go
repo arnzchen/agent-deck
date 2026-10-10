@@ -4,9 +4,29 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/asheshgoplani/agent-deck/internal/session"
 )
+
+func TestConditionalArchiveAcceptanceLockExcludesSend(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	lock, err := session.AcquireCodexAcceptanceLock("archive-thread", time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer lock.Release()
+	if other, err := session.AcquireCodexAcceptanceLock("archive-thread", 10*time.Millisecond); err == nil {
+		other.Release()
+		t.Fatal("concurrent acceptance passed the conditional archive window")
+	}
+	lock.Release()
+	other, err := session.AcquireCodexAcceptanceLock("archive-thread", time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	other.Release()
+}
 
 func TestConditionalArchiveRefusesUnsafeTargets(t *testing.T) {
 	for _, tc := range []struct {
