@@ -636,11 +636,11 @@ func handleSessionArchive(profile string, args []string) {
 	if *expectedVersion != "" || *expectedParent != "" {
 		if err := inst.UpdateStatus(); err != nil {
 			out.Error(fmt.Sprintf("cannot refresh archive guard: %v", err), ErrCodeInvalidOperation)
-			os.Exit(1)
+			exitCLI(1)
 		}
 		if err := validateConditionalArchive(inst, instances, *expectedParent, *expectedVersion); err != nil {
 			out.Error(err.Error(), ErrCodeInvalidOperation)
-			os.Exit(1)
+			exitCLI(1)
 		}
 	}
 
