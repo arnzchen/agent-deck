@@ -42,7 +42,7 @@ func OpenReader(profile string) (*Bus, error) {
 	if err != nil {
 		return nil, err
 	}
-	return OpenAt(dir, Options{ReadOnly: true, KeepCorrupt: true})
+	return OpenAt(dir, Options{ReadOnly: true})
 }
 
 func busDirFor(profile string) (string, error) {
