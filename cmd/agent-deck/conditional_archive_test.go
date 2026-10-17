@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"os"
 	"path/filepath"
 	"testing"
@@ -137,5 +138,30 @@ func TestConditionalArchiveFencesClaudeFlushedTerminalReport(t *testing.T) {
 	}
 	if err := validateConditionalArchive(inst, nil, "p", inst.ResponseContentVersion(nil)); err == nil {
 		t.Fatal("pending new Claude prompt was accepted on an old sentinel")
+	}
+}
+
+func TestConditionalArchiveExplicitEmptyGuardIsRequested(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		args []string
+		want bool
+	}{
+		{"no guard flags", []string{"child"}, false},
+		{"empty parent", []string{"--expected-parent", "", "child"}, true},
+		{"empty version", []string{"--expected-content-version=", "child"}, true},
+		{"both empty", []string{"--expected-parent=", "--expected-content-version=", "child"}, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			fs := flag.NewFlagSet("session archive", flag.ContinueOnError)
+			fs.String("expected-content-version", "", "")
+			fs.String("expected-parent", "", "")
+			if err := fs.Parse(tc.args); err != nil {
+				t.Fatal(err)
+			}
+			if got := conditionalArchiveRequested(fs); got != tc.want {
+				t.Fatalf("conditionalArchiveRequested(%q) = %v, want %v", tc.args, got, tc.want)
+			}
+		})
 	}
 }

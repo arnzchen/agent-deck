@@ -642,7 +642,7 @@ func handleSessionArchive(profile string, args []string) {
 		out.Error(fmt.Sprintf("session '%s' is already archived", inst.Title), ErrCodeInvalidOperation)
 		exitCLI(1)
 	}
-	if *expectedVersion != "" || *expectedParent != "" {
+	if conditionalArchiveRequested(fs) {
 		adoptLiveCodexIdentity(storage, inst)
 		lockedCodexID := inst.CodexSessionID
 		if session.IsCodexCompatible(inst.Tool) {
@@ -711,6 +711,20 @@ func handleSessionArchive(profile string, args []string) {
 		"title":    inst.Title,
 		"archived": true,
 	})
+}
+
+// conditionalArchiveRequested reports whether either guard flag was passed,
+// even with an empty value. An explicitly empty guard (for example an unset
+// shell variable) must reach validateConditionalArchive and be refused rather
+// than silently falling back to an unconditional archive.
+func conditionalArchiveRequested(fs *flag.FlagSet) bool {
+	requested := false
+	fs.Visit(func(f *flag.Flag) {
+		if f.Name == "expected-content-version" || f.Name == "expected-parent" {
+			requested = true
+		}
+	})
+	return requested
 }
 
 func validateConditionalArchive(inst *session.Instance, peers []*session.Instance, parent, version string) error {
