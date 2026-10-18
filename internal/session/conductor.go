@@ -117,6 +117,9 @@ type ConductorSettings struct {
 	// Discord defines Discord bot integration settings
 	Discord DiscordSettings `toml:"discord,omitempty"`
 
+	// Mattermost defines Mattermost bot integration settings
+	Mattermost MattermostSettings `toml:"mattermost,omitempty"`
+
 	// GitHubWatcher configures the opt-in GitHub event watcher that lives in
 	// conductor/gh-watcher/ (issue #2134). The Go binary only parses this table;
 	// conductor/setup.sh reads it to decide whether to install the poller unit.
@@ -395,6 +398,32 @@ type DiscordSettings struct {
 	// IgnoreRepliesToOthers skips forwarding replies unless they reply to the bot itself.
 	// Default: false
 	IgnoreRepliesToOthers bool `toml:"ignore_replies_to_others,omitempty"`
+}
+
+// MattermostSettings defines Mattermost bot configuration for the conductor bridge
+type MattermostSettings struct {
+	// ServerURL is the Mattermost server's base URL (https://mattermost.example.com)
+	ServerURL string `toml:"server_url,omitempty"`
+
+	// BotToken is the bot account's access token. Like the other bridge
+	// secrets it may be "$ENV_VAR" or "keychain:<service>".
+	BotToken string `toml:"bot_token,omitempty"`
+
+	// User is the one person the bot obeys: a username or a user ID
+	User string `toml:"user,omitempty"`
+
+	// ChannelID is the channel where the bot listens and posts.
+	// Empty means a direct message between the bot and User.
+	ChannelID string `toml:"channel_id,omitempty"`
+
+	// ListenMode controls what the bot responds to in ChannelID: "all"
+	// (every message from User) or "mentions" (only @mentions). Ignored in a
+	// direct message. Default: "all"
+	ListenMode string `toml:"listen_mode,omitempty"`
+
+	// AllowInsecureHTTP lets ServerURL be a plain http URL on a host other
+	// than localhost. The bot token and every message then travel unencrypted.
+	AllowInsecureHTTP bool `toml:"allow_insecure_http,omitempty"`
 }
 
 // ConductorMeta holds metadata for a named conductor instance
@@ -2442,7 +2471,6 @@ After=network.target
 
 [Service]
 Type=simple
-ExecStartPre=-/bin/mkdir -p "__LOG_DIR__"
 ExecStart="__PYTHON3__" "__BRIDGE_PATH__"
 Restart=always
 RestartSec=10
@@ -2477,7 +2505,6 @@ After=network.target
 
 [Service]
 Type=simple
-ExecStartPre=-/bin/mkdir -p "__LOG_DIR__"
 ExecStart="__AGENT_DECK__" notify-daemon
 Restart=always
 RestartSec=5
@@ -2606,7 +2633,6 @@ func GenerateSystemdBridgeService() (string, error) {
 	unit := strings.ReplaceAll(systemdBridgeServiceTemplate, "__PYTHON3__", python3Path)
 	unit = strings.ReplaceAll(unit, "__BRIDGE_PATH__", bridgePath)
 	unit = strings.ReplaceAll(unit, "__LOG_PATH__", logPath)
-	unit = strings.ReplaceAll(unit, "__LOG_DIR__", filepath.Dir(logPath))
 	unit = strings.ReplaceAll(unit, "__HOME__", homeDir)
 	unit = strings.ReplaceAll(unit, "__XDG_ENV__", xdgEnv)
 	agentDeckPath := FindAgentDeck()
@@ -2664,7 +2690,6 @@ func GenerateSystemdTransitionNotifierService() (string, error) {
 
 	unit := strings.ReplaceAll(systemdTransitionNotifierServiceTemplate, "__AGENT_DECK__", execPath)
 	unit = strings.ReplaceAll(unit, "__LOG_PATH__", logPath)
-	unit = strings.ReplaceAll(unit, "__LOG_DIR__", filepath.Dir(logPath))
 	unit = strings.ReplaceAll(unit, "__HOME__", homeDir)
 	unit = strings.ReplaceAll(unit, "__PATH__", buildDaemonPath(agentDeckPath))
 	return unit, nil
@@ -2780,6 +2805,14 @@ func installBridgeDaemonSystemd() (string, error) {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return "", fmt.Errorf("failed to create systemd user dir: %w", err)
 	}
+	logDir, err := ConductorDir()
+	if err != nil {
+		return "", fmt.Errorf("failed to get bridge log dir: %w", err)
+	}
+	// systemd opens append output before ExecStartPre, so prepare it here.
+	if err := os.MkdirAll(logDir, 0o700); err != nil {
+		return "", fmt.Errorf("failed to create bridge log dir: %w", err)
+	}
 	if err := os.WriteFile(unitPath, []byte(unitContent), 0o644); err != nil {
 		return "", fmt.Errorf("failed to write systemd unit: %w", err)
 	}
@@ -2891,6 +2924,14 @@ func installTransitionNotifierSystemd() (string, error) {
 	}
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return "", fmt.Errorf("failed to create systemd user dir: %w", err)
+	}
+	logPath, err := logDataPath("transition-notifier.log")
+	if err != nil {
+		return "", fmt.Errorf("failed to get notifier log path: %w", err)
+	}
+	// ExecStartPre cannot create this directory before its own output opens.
+	if err := os.MkdirAll(filepath.Dir(logPath), 0o700); err != nil {
+		return "", fmt.Errorf("failed to create notifier log dir: %w", err)
 	}
 	if err := os.WriteFile(unitPath, []byte(unitContent), 0o644); err != nil {
 		return "", fmt.Errorf("failed to write notifier unit: %w", err)
