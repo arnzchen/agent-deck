@@ -84,7 +84,7 @@ func TestListJSON_HistoricalErrorRowsUseSocketInventory(t *testing.T) {
 	calls := filepath.Join(sb.Home, "tmux-calls")
 	shim := `#!/bin/sh
 printf '%s\n' "$*" >> "$HOME/tmux-calls"
-printf 'error connecting to /tmp/agent-deck-history.sock (No such file or directory)\n' >&2
+printf 'no server running on /tmp/agent-deck-history.sock\n' >&2
 exit 1
 `
 	if err := os.WriteFile(filepath.Join(sb.ShimDir, "tmux"), []byte(shim), 0700); err != nil {
